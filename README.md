@@ -17,12 +17,11 @@ Lightweight server with no build processes
 
 ## /src/config.js
 Configuration for frontend
-- `.PORT`: (number) port number the Speech Service server will run on
 - `.invokeOrigin`: (string) URL address of ScaleReach's frontend (e.g. "http://localhost:8000", no trailing forward slash), used to establish CORS policy for web sockets establishment
 
 ## .env
-Only one variable is used to maintain sessions
 - `DEEPGRAM_API_KEY`: (string) DeepGram's supplied API key
+- `PORT`: (number) port number the Speech Service server will run on
 
 # Dependencies
 - [`express.js`](https://expressjs.com/): NodeJS web framework
