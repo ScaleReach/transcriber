@@ -4,6 +4,7 @@ const socketIO = require("socket.io");
 const cors = require("cors");
 const bodyParser = require('body-parser')
 const config = require("./config")
+const header = require("./header")
 const dotenv = require("dotenv");
 const { Readable } = require("node:stream")
 const { Console } = require("console");
@@ -143,15 +144,6 @@ app.post("/synthesis", async (req, res) => {
 	}
 })
 
-server.listen(config.PORT, () => {
-	console.log(`
-
-
-ScaleReach's own speech recognition and transcription service.
-
-[STARTED]
-Hosted on port ${config.PORT}
-
-
-`);
+server.listen(process.env.PORT, () => {
+	console.log(header("Transcriber", process.env.PORT))
 });
