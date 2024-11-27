@@ -27,6 +27,13 @@ const io = socketIO(server, {
 const recognitionNsp = io.of("recognition")
 recognitionNsp.on("connection", (socket) => {
 	console.log("socket: client connected");
+	const origin = socket.handshake.headers.origin
+	if (config.invokeOrigin !== "*" && origin != config.invokeOrigin) {
+		// not allowed --> disconnect client immediately
+		socket.disconnect(true)
+		return
+	}
+
 	let deepgram;
 	let globalPrefs = {
 		lang: 0
@@ -117,6 +124,14 @@ recognitionNsp.on("connection", (socket) => {
 	});
 });
 
+
+app.use((req, res, next) => {
+	if (config.invokeOrigin !== "*" && req.headers.origin === config.invokeOrigin) {
+		return res.status(400).end() // not allowed
+	}
+
+	next();
+})
 app.use(cors({
 	origin: config.invokeOrigin,
 	methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
