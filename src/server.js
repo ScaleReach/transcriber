@@ -1,5 +1,5 @@
 const express = require("express");
-const http = require("http");
+const https = require("https");
 const socketIO = require("socket.io");
 const cors = require("cors");
 const bodyParser = require('body-parser')
@@ -13,8 +13,13 @@ dotenv.config();
 const { recognitionModel } = require("./recognition")
 const { synthesisModel } = require("./synthesis")
 
+const options = {
+	key: fs.readFileSync(process.env.SSL_KEY),
+	cert: fs.readFileSync(process.env.SSL_CERT),
+}
+
 const app = express();
-const server = http.createServer(app);
+const server = https.createServer(options, app);
 const io = socketIO(server, {
 	cors: {
 		origin: config.invokeOrigin,
