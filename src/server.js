@@ -1,5 +1,6 @@
 const express = require("express");
 const https = require("https");
+const fs = require("fs");
 const socketIO = require("socket.io");
 const cors = require("cors");
 const bodyParser = require('body-parser')
@@ -13,6 +14,7 @@ dotenv.config();
 const { recognitionModel } = require("./recognition")
 const { synthesisModel } = require("./synthesis")
 
+console.log("SSL_KEY", process.env.SSL_KEY)
 const options = {
 	key: fs.readFileSync(process.env.SSL_KEY),
 	cert: fs.readFileSync(process.env.SSL_CERT),
