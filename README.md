@@ -21,9 +21,16 @@ Configuration for frontend
 
 ## .env
 - `DEEPGRAM_API_KEY`: (string) DeepGram's supplied API key
-- `PORT`: (number) port number the Speech Service server will run on
+- `PORT`: (number) port number the Speech Service server will run on (defined in `/Dockerfile`)
 
 # Dependencies
 - [`express.js`](https://expressjs.com/): NodeJS web framework
 - [`socket.IO`](https://socket.io/): NodeJS web socket library
 - [`Deepgram JS SDK`](https://github.com/deepgram/deepgram-js-sdk): JS SDK to interact with Deepgram's API
+
+# Deploy
+Ensure .env file exists within `/src` folder (e.g. `/src/.env`)
+
+1. Upload certificates (.pem and .key) into /certs (`./certs/scalereach.team.pem` and `./certs/scalereach.team.key`)
+2. `docker build -t transcriber .`
+3. `docker run -p 6733:6733 --env-file ./src/.env transcriber`
