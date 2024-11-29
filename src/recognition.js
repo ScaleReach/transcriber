@@ -3,7 +3,7 @@ const { deepgramClient } = require("./deepgramClient");
 
 const recognitionModel = (socket, lang, closeFn, res) => {
 	const deepgram = deepgramClient.listen.live({
-		language: ["en", "zh-CN", "ms", "ta", "hi"][lang],
+		language: ["en-US", "zh-CN", "ms", "ta", "hi"][lang],
 		punctuate: true,
 		smart_format: true,
 		model: lang === 3 ? "enhanced" : "nova-2", // only enhanced has support for tamil
@@ -12,7 +12,7 @@ const recognitionModel = (socket, lang, closeFn, res) => {
 
 		endpointing: 500,
 		interim_results: true,
-		utterance_end_ms: "2000",
+		utterance_end_ms: 1000,
 		vad_events: true
 	});
 
@@ -23,39 +23,67 @@ const recognitionModel = (socket, lang, closeFn, res) => {
 		}
 		console.log("deepgram: connected!!", res);
 
-		let emptyTranscriptCount = 0
-		let transcriptContentPrior; // store the latest non-empty transcribed content here
+		let finalTranscripts = []
 		deepgram.addListener(LiveTranscriptionEvents.Transcript, (data) => {
-			console.log("deepgram: transcript received\n\t", data.type, data.speech_final, data.channel.alternatives[0].transcript);
+			console.log("deepgram: transcript received\n\t", data.type, data.speech_final, data.is_final, data.channel.alternatives[0].transcript);
 
-			if (data.speech_final) {
-				// end of speech
-				if (data.channel.alternatives[0].transcript.length >= 1) {
-					emptyTranscriptCount = 0
-					transcriptContentPrior = null // reset content
+
+			const sent = data.channel.alternatives[0].transcript
+			if (sent.length === 0) {
+				// if (data.speech_final) {
+				// 	// failed
+				// 	socket.emit("transcription-failure")
+				// 	closeFn() // close deepgram connection (reset it when user re-initiates mic input)
+				// }
+				if (data.speech_final && data.is_final) {
+					if (finalTranscripts.length === 0) {
+						return deepgram.finalize()
+					} else {
+						// has transcripts
+						const utterance = finalTranscripts.join(" ")
+						finalTranscripts = [] // reset
+
+						socket.emit("transcription", {
+							type: "end",
+							content: utterance,
+							duration: data.duration
+						})
+
+						closeFn() // call close function
+					}
+				}
+				return
+			}
+
+			if (data.is_final) {
+				finalTranscripts.push(sent)
+
+				const utterance = finalTranscripts.join(" ")
+				if (data.speech_final) {
+					finalTranscripts = [] // reset
 
 					socket.emit("transcription", {
 						type: "end",
-						content: data.channel.alternatives[0].transcript,
+						content: utterance,
 						duration: data.duration
-					});
+					})
 
 					closeFn() // call close function
 				} else {
-					// failed
-					socket.emit("transcription-failure")
-					closeFn() // close deepgram connection (reset it when user re-initiates mic input)
+					// interim results (finalised)
+					socket.emit("transcription", {
+						type: "interim",
+						content: utterance,
+						duration: data.duration
+					})
 				}
 			} else {
 				// interim results
-				emptyTranscriptCount = 0
-				transcriptContentPrior = data.channel.alternatives[0].transcript
-
 				socket.emit("transcription", {
 					type: "interim",
 					content: data.channel.alternatives[0].transcript,
 					duration: data.duration
-				});
+				})
 			}
 		});
 
@@ -65,7 +93,7 @@ const recognitionModel = (socket, lang, closeFn, res) => {
 
 		deepgram.addListener(LiveTranscriptionEvents.Close, async () => {
 			console.log("deepgram: disconnected");
-			deepgram.finish();
+			deepgram.finalize();
 		});
 
 		deepgram.addListener(LiveTranscriptionEvents.Error, async (error) => {
@@ -79,7 +107,7 @@ const recognitionModel = (socket, lang, closeFn, res) => {
 		});
 
 		deepgram.addListener(LiveTranscriptionEvents.Metadata, (data) => {
-			console.log("deepgram: packet received");
+			console.log("deepgram: packet received", metadata);
 			console.log("deepgram: metadata received");
 			console.log("ws: metadata sent to client");
 		});

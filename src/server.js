@@ -1,4 +1,5 @@
 const express = require("express");
+const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const socketIO = require("socket.io");
@@ -9,19 +10,24 @@ const header = require("./header")
 const dotenv = require("dotenv");
 const { Readable } = require("node:stream")
 const { Console } = require("console");
-dotenv.config();
+dotenv.config({path: __dirname +"/.env"});
 
 const { recognitionModel } = require("./recognition")
 const { synthesisModel } = require("./synthesis")
 
 console.log("SSL_KEY", process.env.SSL_KEY)
-const options = {
-	key: fs.readFileSync(process.env.SSL_KEY),
-	cert: fs.readFileSync(process.env.SSL_CERT),
-}
-
 const app = express();
-const server = https.createServer(options, app);
+let server;
+if (process.env.ENV_MODE == "production") {
+	const options = {
+		key: fs.readFileSync(process.env.SSL_KEY),
+		cert: fs.readFileSync(process.env.SSL_CERT),
+	}
+
+	server = https.createServer(options, app);
+} else {
+	server = http.createServer(app)
+}
 const io = socketIO(server, {
 	cors: {
 		origin: config.invokeOrigin,
@@ -33,8 +39,8 @@ const io = socketIO(server, {
 
 const recognitionNsp = io.of("recognition")
 recognitionNsp.on("connection", (socket) => {
-	console.log("socket: client connected");
 	const origin = socket.handshake.headers.origin
+	console.log("socket: client connected", origin, config.invokeOrigin);
 	if (config.invokeOrigin !== "*" && origin != config.invokeOrigin) {
 		// not allowed --> disconnect client immediately
 		socket.disconnect(true)
@@ -91,22 +97,19 @@ recognitionNsp.on("connection", (socket) => {
 		previousAudio = combinedBuffer
 		return previousAudio;
 	}
-	socket.on("audio", (message) => {
-		console.log("socket: client data received", message);
+	socket.on("audio", (message, id) => {
+		console.log("socket: client data received", id);
 		if (deepgram == null) {
 			deepgram = recognitionModel(socket, globalPrefs.lang, resetRecognitionInstance)
 		}
 
-		console.log("readystate", deepgram.getReadyState())
-
 		if (deepgram.getReadyState() === 1 /* OPEN */) {
 			deepgram.send(new Blob([message]))
-			console.log("socket: data sent to deepgram");
 			// if (previousAudio.byteLength >= 1) {
 			// 	deepgram.send(new Blob([appendAudio(message.buffer.slice(message.byteOffset, message.byteOffset +message.byteLength))]));
 			// 	previousAudio = new ArrayBuffer(0)
 			// } else {
-			// 	deepgram.send(new Blob([message]))
+			// 	console.log("socket: data sent to deepgram", id);
 			// }
 		} else if (deepgram.getReadyState() >= 2 /* 2 = CLOSING, 3 = CLOSED */) {
 			console.log("socket: retrying connection to deepgram");
