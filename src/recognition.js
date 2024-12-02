@@ -53,6 +53,29 @@ const recognitionModel = (socket, lang, closeFn, res) => {
 
 						closeFn() // call close function
 					}
+				} else if (!data.speech_final && !data.is_final) {
+					// both false
+					const now = +new Date()
+					console.log("expired", now-timestamp, finalTranscripts.length)
+					if (now -timestamp >= 2000 && finalTranscripts.length >= 1) {
+						// 2 seconds since last transcript
+						const utterance = finalTranscripts.join(" ")
+						finalTranscripts = [] // reset
+
+						socket.emit("transcription", {
+							type: "end",
+							content: utterance,
+							duration: data.duration
+						})
+
+						closeFn() // call close function
+					} else if (now -timestamp >= 5000) {
+						// no audio??
+						socket.emit("transcription-failure")
+						socket.disconnect()
+
+						closeFn()
+					}
 				}
 				return
 			}
