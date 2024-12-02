@@ -24,6 +24,7 @@ const recognitionModel = (socket, lang, closeFn, res) => {
 		console.log("deepgram: connected!!", res);
 
 		let finalTranscripts = []
+		let timestamp = +new Date()
 		deepgram.addListener(LiveTranscriptionEvents.Transcript, (data) => {
 			console.log("deepgram: transcript received\n\t", data.type, data.speech_final, data.is_final, data.channel.alternatives[0].transcript);
 
@@ -57,6 +58,7 @@ const recognitionModel = (socket, lang, closeFn, res) => {
 			}
 
 			if (data.is_final) {
+				timestamp = +new Date()
 				finalTranscripts.push(sent)
 
 				const utterance = finalTranscripts.join(" ")
@@ -78,8 +80,29 @@ const recognitionModel = (socket, lang, closeFn, res) => {
 						duration: data.duration
 					})
 				}
+			} else if (data.channel.alternatives[0].transcript.length === 0) {
+				// empty
+				const now = +new Date()
+				if (now -timestamp >= 2000 && finalTranscripts.length >= 1) {
+					// 2 seconds since last transcript
+					const utterance = finalTranscripts.join(" ")
+					finalTranscripts = [] // reset
+
+					socket.emit("transcription", {
+						type: "end",
+						content: utterance,
+						duration: data.duration
+					})
+
+					closeFn() // call close function
+				} else if (now -timestamp >= 5000) {
+					// no audio??
+					socket.emit("transcription-failure")
+					socket.disconnect()
+				}
 			} else {
 				// interim results
+				console.log("interim!!")
 				socket.emit("transcription", {
 					type: "interim",
 					content: data.channel.alternatives[0].transcript,

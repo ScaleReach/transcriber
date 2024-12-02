@@ -132,6 +132,12 @@ recognitionNsp.on("connection", (socket) => {
 			deepgram = null;
 		}
 	});
+
+	setTimeout(() => {
+		if (socket) {
+			socket.disconnect()
+		}
+	}, 360000) // 6minutes timeout
 });
 
 
