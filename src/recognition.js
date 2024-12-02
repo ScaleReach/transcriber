@@ -37,6 +37,7 @@ const recognitionModel = (socket, lang, closeFn, res) => {
 				// }
 				if (data.speech_final && data.is_final) {
 					if (finalTranscripts.length === 0) {
+						socket.emit("transcription-failure")
 						return deepgram.finalize()
 					} else {
 						// has transcripts
