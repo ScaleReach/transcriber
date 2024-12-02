@@ -83,6 +83,7 @@ const recognitionModel = (socket, lang, closeFn, res) => {
 			} else if (data.channel.alternatives[0].transcript.length === 0) {
 				// empty
 				const now = +new Date()
+				console.log("hmmm", now-timestamp, finalTranscripts.length)
 				if (now -timestamp >= 2000 && finalTranscripts.length >= 1) {
 					// 2 seconds since last transcript
 					const utterance = finalTranscripts.join(" ")
@@ -99,6 +100,8 @@ const recognitionModel = (socket, lang, closeFn, res) => {
 					// no audio??
 					socket.emit("transcription-failure")
 					socket.disconnect()
+
+					closeFn()
 				}
 			} else {
 				// interim results
