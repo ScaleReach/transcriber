@@ -24,7 +24,6 @@ const recognitionModel = (socket, lang, closeFn, res) => {
 		console.log("deepgram: connected!!", res);
 
 		let finalTranscripts = []
-		let timestamp = +new Date()
 		deepgram.addListener(LiveTranscriptionEvents.Transcript, (data) => {
 			console.log("deepgram: transcript received\n\t", data.type, data.speech_final, data.is_final, data.channel.alternatives[0].transcript);
 
@@ -53,29 +52,6 @@ const recognitionModel = (socket, lang, closeFn, res) => {
 
 						closeFn() // call close function
 					}
-				} else if (!data.speech_final && !data.is_final) {
-					// both false
-					const now = +new Date()
-					console.log("expired", now-timestamp, finalTranscripts.length)
-					if (now -timestamp >= 2000 && finalTranscripts.length >= 1) {
-						// 2 seconds since last transcript
-						const utterance = finalTranscripts.join(" ")
-						finalTranscripts = [] // reset
-
-						socket.emit("transcription", {
-							type: "end",
-							content: utterance,
-							duration: data.duration
-						})
-
-						closeFn() // call close function
-					} else if (now -timestamp >= 5000) {
-						// no audio??
-						socket.emit("transcription-failure")
-						socket.disconnect()
-
-						closeFn()
-					}
 				}
 				return
 			}
@@ -102,29 +78,6 @@ const recognitionModel = (socket, lang, closeFn, res) => {
 						content: utterance,
 						duration: data.duration
 					})
-				}
-			} else if (data.channel.alternatives[0].transcript.length === 0) {
-				// empty
-				const now = +new Date()
-				console.log("hmmm", now-timestamp, finalTranscripts.length)
-				if (now -timestamp >= 2000 && finalTranscripts.length >= 1) {
-					// 2 seconds since last transcript
-					const utterance = finalTranscripts.join(" ")
-					finalTranscripts = [] // reset
-
-					socket.emit("transcription", {
-						type: "end",
-						content: utterance,
-						duration: data.duration
-					})
-
-					closeFn() // call close function
-				} else if (now -timestamp >= 5000) {
-					// no audio??
-					socket.emit("transcription-failure")
-					socket.disconnect()
-
-					closeFn()
 				}
 			} else {
 				// interim results
